@@ -3,12 +3,6 @@ name: "Linter 7.4.0: Super Linter"
 on:
   workflow_dispatch:
   pull_request:
-    types:
-      - ready_for_review
-      - synchronize
-  pull_request_review:
-    types:
-      - submitted
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -24,59 +18,14 @@ jobs:
       packages: read
       statuses: write
     steps:
-      - name: No linting
-        shell: bash
-        run: |
-          echo "NO_LINT=true" >> "$GITHUB_ENV"
-
-      - name: Linting or not linting
-        shell: bash
-        if: >-
-          github.event.pull_request.user.login != 'github-actions[bot]' &&
-          github.event.pull_request.user.login != 'dependabot[bot]' &&
-          ! startsWith(github.event.pull_request.title, 'ci') &&
-          (
-            (
-              (
-                github.event_name == 'pull_request' &&
-                (
-                  github.event.action == 'ready_for_review' ||
-                  (github.event.action == 'synchronize' && github.event.pull_request.draft == false)
-                )
-              )
-            ) ||
-            github.event_name == 'workflow_dispatch' ||
-            (github.event_name == 'pull_request_review' && github.event.pull_request.draft == false)
-          )
-        run: echo "NO_LINT=false" >> "$GITHUB_ENV"
-
       - name: Checkout code
-        if: ${{ env.NO_LINT == 'false' }}
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Super-Linter
-        if: ${{ env.NO_LINT == 'false' }}
         uses: super-linter/super-linter@v7.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: main
-          LINTER_RULES_PATH: .github/linters
-          IGNORE_GITIGNORED_FILES: true
           VALIDATE_ALL_CODEBASE: false
-          FILTER_REGEX_EXCLUDE: "(/renv/|/.venv/|/docs/|/studies/.*CHANGELOG.md)"
-          LINTR_ERROR_ON_LINT: true
-          VALIDATE_R: false
-          VALIDATE_JSCPD: false
-          VALIDATE_CHECKOV: false
-          VALIDATE_JAVASCRIPT_STANDARD: false # Use the Prettier version
-          VALIDATE_TYPESCRIPT_STANDARD: false # Use the Prettier version
-          VALIDATE_TYPESCRIPT_ES: false # Use the Prettier version
-          PYTHON_ISORT_CONFIG_FILE: pyproject.toml
-          PYTHON_BLACK_CONFIG_FILE: pyproject.toml
-          PYTHON_PYINK_CONFIG_FILE: pyproject.toml
-
-      - name: End of Linting
-        shell: bash
-        run: echo "Linting Complete!"
